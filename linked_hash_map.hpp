@@ -4,60 +4,80 @@
 #include <unordered_map>
 #include <list>
 #include <utility>
-#include <algorithm>
-#include <set>
-
-using namespace std;
 
 template <class K, class V>
 class linked_hash_map {
 private:
-	typedef typename list<K>::iterator list_iterator;
-	unordered_map< K, pair<V, list_iterator > > hash; 
-	list<K> ls;
+	typedef typename std::list<K const>::iterator list_iterator;
+	std::unordered_map< K, std::pair<V, list_iterator > > hash; 
+	std::list<K const> ls;
 public:
-	int size() { return hash.size(); }
-	bool empty() { return hash.empty(); }
-	void insert(pair<K,V> kv) {
-		if (hash.count(kv.first) == 1) {
-			auto p = hash[kv.first];
-			hash[kv.first] = make_pair(kv.second, p.second);  
+	const int size() noexcept { return hash.size(); }
+	const bool empty() noexcept { return hash.empty(); }
+	
+	void insert(std::pair<K,V>&& kv) {
+		auto const p = hash.find(kv.first);
+		if (p != hash.end()) {
+			p->second.first = std::move(kv.second);
 		} else {
-			ls.push_back(kv.first);
-			auto it = ls.end(); --it;
-			hash.insert( make_pair(kv.first, make_pair(kv.second, it)));
+			auto const it = ls.insert(ls.end(), kv.first);
+			try {
+				hash.insert( std::make_pair(std::move(kv.first), std::make_pair(std::move(kv.second), it)));
+			}
+			catch (...) {
+				ls.erase(it);
+				throw;
+			}
 		}
 	}
-	void erase(K key) {
-		if (hash.count(key) == 1) {
-			auto p = hash[key];
-			hash.erase(key);
-			ls.erase(p.second);
+	void insert(std::pair<K,V> const& kv) {
+		auto const p = hash.find(kv.first);
+		if (p != hash.end()) {
+			p->second.first = std::move(kv.second);
+		} else {
+			ls.push_back(kv.first);
+			try {
+				auto it = ls.end(); --it;
+				hash.insert( std::make_pair(kv.first, std::make_pair(kv.second, it)));
+			}
+			catch (...) {
+				ls.pop_back();
+				throw;
+			}
+		}
+	}
+	void erase(K const& key) {
+		auto const p = hash.find(key);
+		if (p != hash.end()) {
+			ls.erase(p->second.second);
+			hash.erase(p);
 		}
 	}
 	void eraseEldest() {
 		if(!hash.empty()) {
-			K key = ls.front();
+			hash.erase(ls.front());
 			ls.pop_front();
-			hash.erase(key);
 		}
 	}
 	void eraseNewest() {
 		if(!hash.empty()) {
-			K key = ls.back();
+			hash.erase(ls.back());
 			ls.pop_back();
-			hash.erase(key);
 		}
 	}
-	V at(K key) {
-		auto p = hash.at(key);
-		return p.first;
+	V& at(K const& key) {
+		return hash.at(key).first;
 	}
-	V operator[](K key) {
-		auto p = hash[key];
-		return p.first;
+	V const& at(K const& key) const {
+		return hash.at(key).first;
 	}
-	list<K>& keyList() {
+	V& operator[](K const& key) {
+		return hash[key].first;
+	}
+	V const& operator[](K const& key) const {
+		return hash[key].first;
+	}
+	std::list<K const> keyList() {
 		return ls;
 	}
 };
