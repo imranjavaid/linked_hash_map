@@ -12,7 +12,7 @@ private:
 	std::unordered_map< K, std::pair<V, list_iterator > > hash; 
 	std::list<K const> ls;
 public:
-	const int size() noexcept { return hash.size(); }
+	const unsigned long size() noexcept { return hash.size(); }
 	const bool empty() noexcept { return hash.empty(); }
 	
 	void insert(std::pair<K,V>&& kv) {
